@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MOS Evaluation</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260525a" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">MOS</span>
+        <span class="brand-name" data-i18n="app_title">主观评测系统</span>
+      </div>
+      <div class="topbar-right">
+        <span id="rater-badge" class="rater-badge" hidden></span>
+        <button id="lang-toggle" class="ghost-btn" type="button">中 / EN</button>
+      </div>
+    </header>
+
+    <main id="app"></main>
+
+    <footer class="footer">
+      <span data-i18n="footer">本地局域网部署 · 结果保存在 data/results/ 下的 JSON 文件中</span>
+    </footer>
+
+    <script src="/static/js/i18n.js?v=20260525a"></script>
+    <script src="/static/js/app.js?v=20260525a"></script>
+  </body>
+</html>

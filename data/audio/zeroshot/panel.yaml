@@ -1,0 +1,19 @@
+# Optional panel configuration (zero-shot voice cloning).
+# Remove this file to fall back to the built-in default in scanner.py.
+
+type: mos
+title:
+  zh: "零样本语音克隆"
+  en: "Zero-shot Voice Cloning"
+description:
+  zh: "请先收听 Reference,然后对每个系统给出 N-MOS 与 S-MOS。"
+  en: "Listen to the reference first, then rate N-MOS and S-MOS for each system."
+need_reference: true
+need_instruction: false
+dimensions:
+  - key: n_mos
+    name: {zh: "自然度 N-MOS", en: "Naturalness (N-MOS)"}
+    hint: {zh: "整体自然度、流畅度、是否接近真人。", en: "Naturalness; how close it sounds to a real speaker."}
+  - key: s_mos
+    name: {zh: "相似度 S-MOS", en: "Similarity (S-MOS)"}
+    hint: {zh: "与参考说话人音色的相似度。", en: "Speaker similarity to the reference."}

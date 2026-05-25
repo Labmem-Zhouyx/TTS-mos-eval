@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# user data
+data/audio/**/*.wav
+data/audio/**/*.flac
+data/audio/**/*.mp3
+data/audio/**/*.ogg
+data/audio/**/*.m4a
+data/results/*.json
+!data/results/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
+
+# editor
+.DS_Store
+.idea/
+.vscode/

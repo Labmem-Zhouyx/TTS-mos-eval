@@ -1,0 +1,7 @@
+{
+  "system_a": "VoxCPM2",
+  "system_b": "FishAudio_S2",
+  "task": "speaker_similarity",
+  "text": "She walked slowly across the empty courtyard, watching the snow fall.",
+  "language": "en"
+}

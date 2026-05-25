@@ -1,0 +1,16 @@
+type: mos
+title:
+  zh: "自然语言可控生成"
+  en: "Controllable Generation"
+description:
+  zh: "请阅读控制描述,然后对每个系统给出 N-MOS 与 I-MOS。"
+  en: "Read the control description, then rate N-MOS and I-MOS for each system."
+need_reference: false
+need_instruction: true
+dimensions:
+  - key: n_mos
+    name: {zh: "自然度 N-MOS", en: "Naturalness (N-MOS)"}
+    hint: {zh: "整体自然度、流畅度。", en: "Overall naturalness and fluency."}
+  - key: i_mos
+    name: {zh: "指令跟随 I-MOS", en: "Instruction Following (I-MOS)"}
+    hint: {zh: "是否准确执行控制指令。", en: "How faithfully the output follows the instruction."}

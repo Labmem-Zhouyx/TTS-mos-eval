@@ -1,0 +1,17 @@
+type: abx
+title:
+  zh: "ABX 偏好测试"
+  en: "ABX Preference Test"
+description:
+  zh: "请先收听 Reference,然后比较 A、B 哪一个更接近 Reference 或更符合描述。"
+  en: "Listen to the reference, then choose whether A or B is closer to it / better fits the description."
+need_reference: true
+need_instruction: false
+dimensions:
+  - key: preference
+    type: choice
+    name: {zh: "偏好选择", en: "Preference"}
+    choices:
+      - {value: A, label: {zh: "更倾向 A", en: "Prefer A"}}
+      - {value: tie, label: {zh: "差不多 / Tie", en: "Tie"}}
+      - {value: B, label: {zh: "更倾向 B", en: "Prefer B"}}

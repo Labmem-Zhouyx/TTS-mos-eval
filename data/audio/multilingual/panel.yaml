@@ -1,0 +1,13 @@
+type: mos
+title:
+  zh: "多语言合成"
+  en: "Multilingual Synthesis"
+description:
+  zh: "对每个系统给出整体自然度 N-MOS。"
+  en: "Rate the overall naturalness (N-MOS) for each system."
+need_reference: false
+need_instruction: false
+dimensions:
+  - key: n_mos
+    name: {zh: "自然度 N-MOS", en: "Naturalness (N-MOS)"}
+    hint: {zh: "整体自然度、流畅度、是否接近母语人士发音。", en: "Naturalness; how close it sounds to a native speaker."}
