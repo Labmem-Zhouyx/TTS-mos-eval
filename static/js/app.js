@@ -2,6 +2,7 @@
 (() => {
   const STORAGE_KEY = "mos_eval_session";
   const RATING_VALUES = [1, 2, 3, 4, 5];
+  const CMOS_VALUES = [-3, -2, -1, 0, 1, 2, 3];
 
   const state = {
     lang: "zh",
@@ -565,6 +566,8 @@
 
     if (panel.type === "abx") {
       body.appendChild(renderAbxBody(panel, sample));
+    } else if (panel.type === "cmos") {
+      body.appendChild(renderCmosBody(panel, sample));
     } else {
       body.appendChild(renderMosBody(panel, sample));
     }
@@ -894,6 +897,118 @@
     }
     wrapper.appendChild(el("div", { class: "dim" }, choices));
     return wrapper;
+  }
+
+  function renderCmosBody(panel, sample) {
+    const wrapper = el("div", {});
+    const r = ratingsForSample(panel.name, sample.sample_id);
+    r.scores = r.scores || {};
+
+    if (sample.anchor_url) {
+      wrapper.appendChild(
+        el(
+          "div",
+          { class: "audio-strip" },
+          el("strong", {}, t("cmos_anchor_label")),
+          el("span", { class: "subtle" }, sample.anchor_system || ""),
+          el("audio", {
+            src: sample.anchor_url,
+            controls: "",
+            controlslist: "nodownload noplaybackrate noremoteplayback",
+            oncontextmenu: (e) => e.preventDefault(),
+            preload: "none",
+          }),
+        ),
+      );
+    }
+
+    wrapper.appendChild(
+      el("div", { class: "sample-text subtle" }, t("cmos_question")),
+    );
+
+    const order = orderedSystems(panel, sample);
+    const grid = el("div", { class: "system-list" });
+    const dim = panel.dimensions[0] || {
+      key: "cmos",
+      name: { zh: "C-MOS", en: "C-MOS" },
+      hint: {
+        zh: "与基准系统相比：-3 明显更差，0 相近，+3 明显更好。",
+        en: "Compared with the anchor system: -3 much worse, 0 similar, +3 much better.",
+      },
+    };
+
+    order.forEach((sys, idx) => {
+      const audioEntry = sample.audio.find((a) => a.role === sys);
+      const audioUrl = audioEntry ? audioEntry.url : null;
+      const card = el(
+        "div",
+        { class: "system-card" },
+        el(
+          "div",
+          { class: "system-card-title" },
+          `${t("system_label")} ${idx + 1}`,
+        ),
+        audioUrl
+          ? el("audio", {
+              src: audioUrl,
+              controls: "",
+              controlslist: "nodownload noplaybackrate noremoteplayback",
+              oncontextmenu: (e) => e.preventDefault(),
+              preload: "none",
+            })
+          : el("div", { class: "status-line err" }, "missing audio"),
+      );
+      const scoreFor = r.scores[sys] || (r.scores[sys] = {});
+      card.appendChild(renderCmosScale(dim, scoreFor, panel));
+      grid.appendChild(card);
+    });
+
+    wrapper.appendChild(grid);
+    return wrapper;
+  }
+
+  function renderCmosScale(dim, scoreFor, panel) {
+    const dimRow = el(
+      "div",
+      { class: "dim" },
+      el(
+        "div",
+        { class: "dim-label" },
+        el("span", {}, pickLang(dim.name)),
+        dim.hint
+          ? el("span", { class: "dim-hint" }, pickLang(dim.hint))
+          : null,
+      ),
+    );
+    const rating = el("div", { class: "rating cmos-rating" });
+    for (const v of CMOS_VALUES) {
+      const label = v > 0 ? `+${v}` : `${v}`;
+      const pill = el(
+        "button",
+        {
+          class:
+            "pill" +
+            (Math.abs((scoreFor[dim.key] ?? Number.NaN) - v) < 1e-6 ? " active" : ""),
+          type: "button",
+          onclick: () => {
+            scoreFor[dim.key] = v;
+            persistLocal();
+            for (const child of rating.children) {
+              const value = parseFloat(child.dataset.value);
+              child.classList.toggle("active", Math.abs(value - v) < 1e-6);
+            }
+            try {
+              syncSession([panel.name], false);
+            } catch (_) {}
+          },
+          dataset: { value: String(v) },
+        },
+        label,
+      );
+      rating.appendChild(pill);
+    }
+    dimRow.appendChild(rating);
+    return dimRow;
   }
 
   function renderAllDone() {

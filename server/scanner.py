@@ -174,6 +174,27 @@ DEFAULT_PANEL_TEMPLATES: Dict[str, Dict[str, Any]] = {
             }
         ],
     },
+    "cmos": {
+        "type": "cmos",
+        "title": {"zh": "C-MOS 对比评测", "en": "C-MOS Comparative Evaluation"},
+        "description": {
+            "zh": "请将各系统与基准系统进行比较，并给出 -3 到 3 的 C-MOS 分数。",
+            "en": "Compare each system against the anchor system and rate C-MOS from -3 to 3.",
+        },
+        "need_reference": False,
+        "need_instruction": False,
+        "anchor_system": "VoxCPM2",
+        "dimensions": [
+            {
+                "key": "cmos",
+                "name": {"zh": "C-MOS", "en": "C-MOS"},
+                "hint": {
+                    "zh": "与基准系统相比：-3 明显更差，0 相近，+3 明显更好。",
+                    "en": "Compared with the anchor system: -3 much worse, 0 similar, +3 much better.",
+                },
+            }
+        ],
+    },
 }
 
 
@@ -199,6 +220,9 @@ class Sample:
     instruction: Optional[str] = None
     language: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
+    # CMOS-specific
+    anchor_system: Optional[str] = None
+    anchor_url: Optional[str] = None
     # ABX-specific
     abx_a_system: Optional[str] = None
     abx_b_system: Optional[str] = None
@@ -251,6 +275,8 @@ def _load_panel_config(panel_dir: Path, panel_name: str) -> Dict[str, Any]:
         # heuristic match
         if "abx" in template_key or "preference" in template_key:
             base = DEFAULT_PANEL_TEMPLATES["abx"]
+        elif "cmos" in template_key or "comparative" in template_key:
+            base = DEFAULT_PANEL_TEMPLATES["cmos"]
         elif "multi" in template_key or "lang" in template_key:
             base = DEFAULT_PANEL_TEMPLATES["multilingual"]
         elif "control" in template_key or "instruct" in template_key:
@@ -362,6 +388,42 @@ def _scan_samples(panel_dir: Path, audio_root: Path, cfg: Dict[str, Any]) -> Lis
             )
             continue
 
+        if panel_type == "cmos":
+            anchor_system = cfg.get("anchor_system") or meta.get("anchor_system") or "VoxCPM2"
+            anchor_audio = next((a for a in audios if a.role == anchor_system), None)
+            if anchor_audio is None:
+                logger.warning(
+                    "CMOS sample missing anchor system '%s': %s",
+                    anchor_system,
+                    sample_dir,
+                )
+                continue
+            systems = [
+                a.role
+                for a in audios
+                if a.role.lower() not in RESERVED_NAMES and a.role != anchor_system
+            ]
+            systems.sort()
+            if not systems:
+                logger.warning("CMOS sample without comparable systems: %s", sample_dir)
+                continue
+            samples.append(
+                Sample(
+                    sample_id=sample_dir.name,
+                    audio=audios,
+                    systems=systems,
+                    reference_url=reference_url,
+                    ground_truth_url=gt_url,
+                    text=meta.get("text"),
+                    instruction=meta.get("instruction"),
+                    language=meta.get("language"),
+                    meta=meta,
+                    anchor_system=anchor_system,
+                    anchor_url=anchor_audio.url,
+                )
+            )
+            continue
+
         # MOS panels: rateable roles = system names (exclude reference / gt)
         systems = [a.role for a in audios if a.role.lower() not in RESERVED_NAMES]
         systems.sort()
@@ -412,6 +474,8 @@ def sample_to_dict(sample: Sample) -> Dict[str, Any]:
         "instruction": sample.instruction,
         "language": sample.language,
         "meta": sample.meta,
+        "anchor_system": sample.anchor_system,
+        "anchor_url": sample.anchor_url,
         "abx_a_system": sample.abx_a_system,
         "abx_b_system": sample.abx_b_system,
     }

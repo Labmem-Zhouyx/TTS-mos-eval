@@ -1,0 +1,18 @@
+type: cmos
+title:
+  zh: "C-MOS 对比评测"
+  en: "C-MOS Comparative Evaluation"
+description:
+  zh: "请将各系统与基准系统进行比较，并给出 -3 到 3 的 C-MOS 分数。"
+  en: "Compare each system against the anchor system and rate C-MOS from -3 to 3."
+need_reference: false
+need_instruction: false
+anchor_system: VoxCPM2
+dimensions:
+  - key: cmos
+    name: {zh: "C-MOS", en: "C-MOS"}
+    hint:
+      {
+        zh: "与基准系统相比：-3 明显更差，0 相近，+3 明显更好。",
+        en: "Compared with the anchor system: -3 much worse, 0 similar, +3 much better.",
+      }

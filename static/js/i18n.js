@@ -28,6 +28,8 @@ window.I18N = {
     reference_label: "参考音频 (Reference)",
     ground_truth_label: "Ground Truth",
     system_label: "系统",
+    cmos_anchor_label: "基准系统 / Anchor",
+    cmos_question: "请将下方系统与基准系统比较，并给出 -3 到 3 的比较评分。",
     abx_question: "哪一个更符合参考 / 描述？",
     abx_pref_a: "更倾向 A",
     abx_pref_b: "更倾向 B",
@@ -83,6 +85,9 @@ window.I18N = {
     reference_label: "Reference audio",
     ground_truth_label: "Ground truth",
     system_label: "System",
+    cmos_anchor_label: "Anchor system",
+    cmos_question:
+      "Compare each system below against the anchor system and assign a score from -3 to 3.",
     abx_question: "Which one is closer to the reference / description?",
     abx_pref_a: "Prefer A",
     abx_pref_b: "Prefer B",
