@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import secrets
 import time
 from pathlib import Path
 from typing import Any, Dict, List
@@ -48,9 +49,19 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def disable_cache(request, call_next):
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith(("/api/", "/audio/", "/static/")):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
     data_root = get_data_root()
     audio_root = data_root / "audio"
     static_root = _project_root() / "static"
+    startup_seed = secrets.token_hex(8)
 
     audio_root.mkdir(parents=True, exist_ok=True)
 
@@ -72,7 +83,10 @@ def create_app() -> FastAPI:
         # scan_panels registers every audio file under an opaque token;
         # the returned payload only contains /audio/<token> URLs.
         panels = scan_panels(audio_root)
-        return {"panels": [panel_to_dict(p) for p in panels]}
+        return {
+            "panels": [panel_to_dict(p) for p in panels],
+            "startup_seed": startup_seed,
+        }
 
     @app.get("/audio/{token}", include_in_schema=False)
     def get_audio(token: str) -> FileResponse:
@@ -157,6 +171,7 @@ def create_app() -> FastAPI:
 
     logger.info("data root: %s", data_root)
     logger.info("audio root: %s", audio_root)
+    logger.info("startup seed: %s", startup_seed)
     return app
 
 

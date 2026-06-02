@@ -23,6 +23,7 @@ window.I18N = {
     panel_samples: (n) => `${n} 条样本`,
     panel_dims: (n) => `${n} 个评分维度`,
     sample_label: (i, n) => `样本 ${i} / ${n}`,
+    sample_language_label: "语种 / Language",
     text_label: "合成文本 / Text",
     instruction_label: "控制描述 / Instruction",
     reference_label: "参考音频 (Reference)",
@@ -42,6 +43,11 @@ window.I18N = {
     next: "下一条",
     submit_panel: "提交本面板",
     submit_all: "全部提交",
+    final_submit_title: "最终提交",
+    final_submit_ready: "所有评分项都已完成。请点击下方按钮，再保存一次最终 JSON 结果。",
+    final_submit_incomplete: (n) => `还有 ${n} 个评分项未完成，请先补齐后再最终提交。`,
+    final_check_missing: "查看未完成项",
+    jump_first_missing: "跳转到第一个缺漏",
     back_to_panels: "返回面板列表",
     submitted_title: "面板已提交",
     submitted_desc: "已成功保存到服务器。可继续评测其他面板。",
@@ -55,6 +61,12 @@ window.I18N = {
     panel_incomplete: "本面板还有样本未完成",
     confirm_submit_panel: "确认提交本面板？提交后仍可修改。",
     confirm_submit_all: "确认全部提交？",
+    confirm_submit_all_ready: "所有评分都已完成。确认最终提交并保存 JSON 结果？",
+    missing_items_title: (n) => `还有 ${n} 个未评分项：`,
+    missing_item_mos: (panel, sample, system, dim) => `- ${panel} / ${sample} / ${system} / ${dim}`,
+    missing_item_abx: (panel, sample) => `- ${panel} / ${sample} / ABX 选择`,
+    missing_more: (n) => `... 以及另外 ${n} 项`,
+    missing_jump_confirm: "是否跳转到第一个未评分的位置？",
   },
   en: {
     app_title: "MOS Evaluation",
@@ -80,6 +92,7 @@ window.I18N = {
     panel_samples: (n) => `${n} samples`,
     panel_dims: (n) => `${n} rating dimensions`,
     sample_label: (i, n) => `Sample ${i} / ${n}`,
+    sample_language_label: "Language",
     text_label: "Text",
     instruction_label: "Instruction",
     reference_label: "Reference audio",
@@ -100,6 +113,13 @@ window.I18N = {
     next: "Next",
     submit_panel: "Submit this panel",
     submit_all: "Submit all",
+    final_submit_title: "Final submit",
+    final_submit_ready:
+      "All rating items are complete. Click below to save the final JSON result.",
+    final_submit_incomplete: (n) =>
+      `${n} rating items are still missing. Please complete them before final submit.`,
+    final_check_missing: "Review missing items",
+    jump_first_missing: "Jump to first missing",
     back_to_panels: "Back to panels",
     submitted_title: "Panel submitted",
     submitted_desc:
@@ -115,5 +135,13 @@ window.I18N = {
     confirm_submit_panel:
       "Submit this panel? You can still edit after submission.",
     confirm_submit_all: "Submit all panels?",
+    confirm_submit_all_ready:
+      "All ratings are complete. Confirm final submit and save the JSON result?",
+    missing_items_title: (n) => `${n} rating items are still missing:`,
+    missing_item_mos: (panel, sample, system, dim) =>
+      `- ${panel} / ${sample} / ${system} / ${dim}`,
+    missing_item_abx: (panel, sample) => `- ${panel} / ${sample} / ABX choice`,
+    missing_more: (n) => `... and ${n} more`,
+    missing_jump_confirm: "Jump to the first missing item?",
   },
 };

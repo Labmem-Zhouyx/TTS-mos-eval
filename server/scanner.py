@@ -108,8 +108,8 @@ DEFAULT_PANEL_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "type": "mos",
         "title": {"zh": "多语言合成", "en": "Multilingual Synthesis"},
         "description": {
-            "zh": "对每个系统给出整体自然度 N-MOS。",
-            "en": "Rate the overall naturalness (N-MOS) for each system.",
+            "zh": "对每个系统给出 N-MOS 与 S-MOS。",
+            "en": "Rate N-MOS and S-MOS for each system.",
         },
         "need_reference": False,
         "need_instruction": False,
@@ -121,7 +121,15 @@ DEFAULT_PANEL_TEMPLATES: Dict[str, Dict[str, Any]] = {
                     "zh": "整体自然度、流畅度、是否接近母语人士发音。",
                     "en": "Overall naturalness and how close it sounds to a native speaker.",
                 },
-            }
+            },
+            {
+                "key": "s_mos",
+                "name": {"zh": "相似度 S-MOS", "en": "Similarity (S-MOS)"},
+                "hint": {
+                    "zh": "与目标说话人/参考音频在音色与说话风格上的相似度。",
+                    "en": "Similarity to the target speaker or reference audio in voice quality and speaking style.",
+                },
+            },
         ],
     },
     "controllable": {

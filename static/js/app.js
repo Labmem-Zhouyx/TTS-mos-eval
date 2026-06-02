@@ -14,7 +14,7 @@
     panelStatus: {}, // panelName -> 'draft' | 'submitted'
     view: { name: "start", panelName: null, sampleIdx: 0 },
     lastSavedAt: null,
-    systemOrder: {}, // panelName -> sampleId -> shuffled order of systems
+    startupSeed: null,
   };
 
   const app = document.getElementById("app");
@@ -56,10 +56,31 @@
     return e;
   }
 
-  function shuffle(arr) {
+  function hashString(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function seededRandom(seed) {
+    let t = seed >>> 0;
+    return () => {
+      t += 0x6d2b79f5;
+      let x = t;
+      x = Math.imul(x ^ (x >>> 15), x | 1);
+      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seededShuffle(arr, seedKey) {
     const a = arr.slice();
+    const rand = seededRandom(hashString(seedKey));
     for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rand() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
@@ -69,6 +90,24 @@
     if (!obj) return "";
     if (typeof obj === "string") return obj;
     return obj[state.lang] || obj.zh || obj.en || Object.values(obj)[0] || "";
+  }
+
+  function formatSampleLanguage(code) {
+    if (!code) return "";
+    const normalized = String(code).trim().toLowerCase();
+    const names = {
+      zh: { zh: "中文", en: "Chinese" },
+      en: { zh: "英语", en: "English" },
+      de: { zh: "德语", en: "German" },
+      fr: { zh: "法语", en: "French" },
+      es: { zh: "西班牙语", en: "Spanish" },
+      ru: { zh: "俄语", en: "Russian" },
+      ja: { zh: "日语", en: "Japanese" },
+      ko: { zh: "韩语", en: "Korean" },
+    };
+    const label = names[normalized];
+    if (label) return `${label[state.lang] || label.zh} (${normalized})`;
+    return normalized.toUpperCase();
   }
 
   function fmtTime(d = new Date()) {
@@ -90,7 +129,7 @@
           sessionId: state.sessionId,
           ratings: state.ratings,
           panelStatus: state.panelStatus,
-          systemOrder: state.systemOrder,
+          startupSeed: state.startupSeed,
           view: state.view,
         }),
       );
@@ -110,7 +149,7 @@
       state.sessionId = obj.sessionId;
       state.ratings = obj.ratings || {};
       state.panelStatus = obj.panelStatus || {};
-      state.systemOrder = obj.systemOrder || {};
+      state.startupSeed = obj.startupSeed || null;
       state.view = obj.view || state.view;
       return true;
     } catch (_) {
@@ -124,12 +163,24 @@
     } catch (_) {}
   }
 
+  function resetToStart(clearStorage = false) {
+    if (clearStorage) clearLocal();
+    state.sessionId = null;
+    state.ratings = {};
+    state.panelStatus = {};
+    state.panels = [];
+    state.startupSeed = null;
+    state.lastSavedAt = null;
+    state.view = { name: "start", panelName: null, sampleIdx: 0 };
+  }
+
   // ------------------------------------------------------------------ //
   // network                                                            //
   // ------------------------------------------------------------------ //
 
   async function api(path, options = {}) {
     const res = await fetch(path, {
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       ...options,
     });
@@ -142,6 +193,12 @@
       throw new Error(detail);
     }
     return res.json();
+  }
+
+  async function ensureSessionValid() {
+    if (!state.sessionId) return false;
+    await api(`/api/session/${encodeURIComponent(state.sessionId)}`);
+    return true;
   }
 
   function buildPanelSubmission(panelName, status) {
@@ -199,16 +256,25 @@
       })
       .filter(Boolean);
     if (!panelsToSend.length && !final) return;
-    await api("/api/session/update", {
-      method: "POST",
-      body: JSON.stringify({
-        session_id: state.sessionId,
-        nickname: state.nickname,
-        language: state.lang,
-        panels: panelsToSend,
-        final,
-      }),
-    });
+    try {
+      await api("/api/session/update", {
+        method: "POST",
+        body: JSON.stringify({
+          session_id: state.sessionId,
+          nickname: state.nickname,
+          language: state.lang,
+          panels: panelsToSend,
+          final,
+        }),
+      });
+    } catch (e) {
+      if (e && typeof e.message === "string" && e.message.includes("session not found")) {
+        resetToStart(true);
+        render();
+        throw new Error(t("error_session"));
+      }
+      throw e;
+    }
     state.lastSavedAt = fmtTime();
     persistLocal();
   }
@@ -253,14 +319,91 @@
     return { done, total };
   }
 
-  function orderedSystems(panel, sample) {
-    if (!state.systemOrder[panel.name]) state.systemOrder[panel.name] = {};
-    const cached = state.systemOrder[panel.name][sample.sample_id];
-    if (cached && cached.length === sample.systems.length) return cached;
-    const shuffled = shuffle(sample.systems);
-    state.systemOrder[panel.name][sample.sample_id] = shuffled;
+  function collectMissingItems(panel = null) {
+    const panels = panel ? [panel] : state.panels;
+    const missing = [];
+    for (const currentPanel of panels) {
+      for (let sampleIdx = 0; sampleIdx < currentPanel.samples.length; sampleIdx++) {
+        const sample = currentPanel.samples[sampleIdx];
+        if (currentPanel.type === "abx") {
+          const r = ratingsForSample(currentPanel.name, sample.sample_id);
+          if (r.abx_choice === null || r.abx_choice === undefined) {
+            missing.push({
+              panelName: currentPanel.name,
+              panelTitle: pickLang(currentPanel.title),
+              sampleId: sample.sample_id,
+              sampleIdx,
+              type: "abx",
+            });
+          }
+          continue;
+        }
+        const scores = ratingsForSample(currentPanel.name, sample.sample_id).scores;
+        for (const sys of sample.systems) {
+          const dims = scores[sys] || {};
+          for (const dim of currentPanel.dimensions) {
+            const value = dims[dim.key];
+            if (value === null || value === undefined || value === "") {
+              missing.push({
+                panelName: currentPanel.name,
+                panelTitle: pickLang(currentPanel.title),
+                sampleId: sample.sample_id,
+                sampleIdx,
+                system: sys,
+                dimName: pickLang(dim.name),
+                type: "mos",
+              });
+            }
+          }
+        }
+      }
+    }
+    return missing;
+  }
+
+  function formatMissingItems(missing, limit = 12) {
+    const lines = [t("missing_items_title", missing.length)];
+    for (const item of missing.slice(0, limit)) {
+      if (item.type === "abx") {
+        lines.push(t("missing_item_abx", item.panelTitle, item.sampleId));
+      } else {
+        lines.push(
+          t("missing_item_mos", item.panelTitle, item.sampleId, item.system, item.dimName),
+        );
+      }
+    }
+    if (missing.length > limit) {
+      lines.push(t("missing_more", missing.length - limit));
+    }
+    return lines.join("\n");
+  }
+
+  function jumpToMissingItem(item) {
+    if (!item) return;
+    state.view = {
+      name: "panel",
+      panelName: item.panelName,
+      sampleIdx: item.sampleIdx,
+    };
     persistLocal();
-    return shuffled;
+    render();
+  }
+
+  function handleMissingItems(missing) {
+    if (!missing.length) return false;
+    alert(formatMissingItems(missing));
+    if (confirm(t("missing_jump_confirm"))) {
+      jumpToMissingItem(missing[0]);
+    }
+    return true;
+  }
+
+  function orderedSystems(panel, sample) {
+    const seed = state.startupSeed || "default";
+    return seededShuffle(
+      sample.systems,
+      `systems:${seed}:${panel.name}:${sample.sample_id}`,
+    );
   }
 
   // ------------------------------------------------------------------ //
@@ -338,7 +481,9 @@
             state.sessionId = res.session_id;
             state.ratings = {};
             state.panelStatus = {};
-            state.systemOrder = {};
+            state.panels = [];
+            state.startupSeed = null;
+            state.lastSavedAt = null;
             persistLocal();
             await loadPanels();
             state.view = { name: "panels", panelName: null, sampleIdx: 0 };
@@ -384,7 +529,16 @@
 
   async function loadPanels() {
     const res = await api("/api/panels");
-    state.panels = res.panels || [];
+    const startupSeed = String(res.startup_seed || "default");
+    state.startupSeed = startupSeed;
+    state.panels = (res.panels || []).map((panel) => ({
+      ...panel,
+      samples: seededShuffle(
+        panel.samples || [],
+        `samples:${startupSeed}:${panel.name}`,
+      ),
+    }));
+    persistLocal();
   }
 
   function renderPanelList() {
@@ -447,37 +601,59 @@
     }
     app.appendChild(grid);
 
-    const totalDone = state.panels.filter((p) => panelDone(p.name)).length;
-    if (totalDone === state.panels.length) {
-      const finalCard = el(
+    const missingAll = collectMissingItems();
+    const allComplete = missingAll.length === 0;
+    const finalCard = el(
+      "div",
+      { class: "card" },
+      el("h2", {}, t("final_submit_title")),
+      el(
+        "p",
+        { class: allComplete ? "subtle" : "status-line warn" },
+        allComplete ? t("final_submit_ready") : t("final_submit_incomplete", missingAll.length),
+      ),
+      el(
         "div",
-        { class: "card" },
-        el("h2", {}, t("all_done_title")),
-        el("p", { class: "subtle" }, t("all_done_desc")),
-        el(
-          "div",
-          { class: "btn-row" },
-          el(
-            "button",
-            {
-              class: "btn",
-              onclick: async () => {
-                if (!confirm(t("confirm_submit_all"))) return;
-                try {
-                  await syncSession(null, true);
-                  state.view = { name: "all_done", panelName: null, sampleIdx: 0 };
-                  render();
-                } catch (e) {
-                  alert(`${t("error_network")}: ${e.message}`);
-                }
+        { class: "btn-row" },
+        !allComplete
+          ? el(
+              "button",
+              {
+                class: "btn-secondary btn",
+                onclick: () => handleMissingItems(missingAll),
               },
+              t("final_check_missing"),
+            )
+          : null,
+        el(
+          "button",
+          {
+            class: "btn",
+            onclick: async () => {
+              const missingNow = collectMissingItems();
+              if (missingNow.length) {
+                handleMissingItems(missingNow);
+                return;
+              }
+              if (!confirm(t("confirm_submit_all_ready"))) return;
+              for (const panel of state.panels) {
+                state.panelStatus[panel.name] = "submitted";
+              }
+              try {
+                await syncSession(null, true);
+                state.view = { name: "all_done", panelName: null, sampleIdx: 0 };
+                persistLocal();
+                render();
+              } catch (e) {
+                alert(`${t("error_network")}: ${e.message}`);
+              }
             },
-            t("submit_all"),
-          ),
+          },
+          t("submit_all"),
         ),
-      );
-      app.appendChild(finalCard);
-    }
+      ),
+    );
+    app.appendChild(finalCard);
   }
 
   function renderPanel() {
@@ -534,6 +710,16 @@
           { class: "sample-text" },
           el("h3", {}, t("instruction_label")),
           sample.instruction,
+        ),
+      );
+    }
+    if (panel.name === "multilingual" && sample.language) {
+      body.appendChild(
+        el(
+          "div",
+          { class: "sample-text" },
+          el("h3", {}, t("sample_language_label")),
+          formatSampleLanguage(sample.language),
         ),
       );
     }
@@ -632,8 +818,9 @@
           class: "btn",
           onclick: async () => {
             if (isLast) {
-              if (!panelComplete(panel)) {
-                alert(t("panel_incomplete"));
+              const missingInPanel = collectMissingItems(panel);
+              if (missingInPanel.length) {
+                handleMissingItems(missingInPanel);
                 return;
               }
               if (!confirm(t("confirm_submit_panel"))) return;
@@ -1026,12 +1213,7 @@
             {
               class: "btn-secondary btn",
               onclick: () => {
-                clearLocal();
-                state.sessionId = null;
-                state.ratings = {};
-                state.panelStatus = {};
-                state.systemOrder = {};
-                state.view = { name: "start", panelName: null, sampleIdx: 0 };
+                resetToStart(true);
                 render();
               },
             },
@@ -1056,13 +1238,14 @@
     const restored = restoreLocal();
     if (restored) {
       try {
+        await ensureSessionValid();
         await loadPanels();
       } catch (_) {
-        /* render anyway */
+        resetToStart(true);
       }
       render();
     } else {
-      state.view = { name: "start", panelName: null, sampleIdx: 0 };
+      resetToStart(false);
       render();
     }
   })();

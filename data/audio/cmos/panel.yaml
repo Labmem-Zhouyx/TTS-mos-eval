@@ -13,6 +13,6 @@ dimensions:
     name: {zh: "C-MOS", en: "C-MOS"}
     hint:
       {
-        zh: "与基准系统相比：-3 明显更差，0 相近，+3 明显更好。",
-        en: "Compared with the anchor system: -3 much worse, 0 similar, +3 much better.",
+        zh: "C-MOS 分数定义为与 proposed model 的比较结果；-3 明显更差，0 相近，+3 明显更好。",
+        en: "The CMOS score is the result of comparison with the proposed model. -3 means much worse, 0 means similar, and +3 means much better.",
       }

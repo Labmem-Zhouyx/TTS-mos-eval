@@ -5,7 +5,7 @@ listening tests over a local network. It is designed for TTS evaluation,
 but can also be used for any audio comparison study that needs:
 
 - anonymous system presentation
-- per-sample randomized order
+- startup-seeded sample/system randomization
 - MOS scoring with multiple dimensions
 - ABX / A-B preference tests
 - automatic draft saving
@@ -46,7 +46,7 @@ data/audio/<panel>/<sample>/
 ```
 
 Each first-level directory under `data/audio/` becomes one evaluation panel.
-Built-in templates are provided for the four panel names below, so in the
+Built-in templates are provided for the five panel names below, so in the
 common case you only need to drop audio into place.
 
 ```text
@@ -62,7 +62,7 @@ data/audio/
 │       ├── FishAudio_S2.wav
 │       ├── Qwen3-TTS.wav
 │       └── meta.json
-├── multilingual/                 # multilingual naturalness, N-MOS
+├── multilingual/                 # multilingual synthesis, N-MOS + S-MOS
 │   └── sample_de_002/
 │       ├── ground_truth.wav      # optional
 │       ├── VoxCPM2.wav
@@ -123,7 +123,7 @@ include unfinished panels during live collection.
 | panel directory name | type | dimensions | reference | instruction |
 | --- | --- | --- | --- | --- |
 | `zeroshot` | mos | `N-MOS`, `S-MOS` | required | no |
-| `multilingual` | mos | `N-MOS` | optional | no |
+| `multilingual` | mos | `N-MOS`, `S-MOS` | optional | no |
 | `controllable` | mos | `N-MOS`, `I-MOS` | optional | shown |
 | `cmos` | cmos | comparative score from `-3` to `3` | optional | optional |
 | `abx` | abx | preference (`A` / `B` / `tie`) | required by default | no |
@@ -136,10 +136,10 @@ You can override titles, dimensions, hints, or panel behavior by placing a
 
 - `reference.wav` and `ground_truth.wav` have reserved meanings.
 - In MOS panels, every other `*.wav` is treated as one system to rate.
-- In `cmos` panels, one system is treated as the anchor system (default: `VoxCPM2`), and all other systems are scored relative to it on a `-3 ... 3` scale.
+- In `cmos` panels, one system is treated as the anchor / proposed system (default: `VoxCPM2`), and all other systems are scored relative to it on a `-3 ... 3` scale. The CMOS score is the result of comparison with the proposed model.
 - In ABX panels, audio must be named `reference.wav`, `A.wav`, and `B.wav`.
 - `meta.json` is optional but strongly recommended.
-- System order is randomized independently for each `(panel, sample, rater)`.
+- Sample order and system order are shuffled once per server startup using a process-local random seed.
 
 ## Report Format
 
